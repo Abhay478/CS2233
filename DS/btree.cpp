@@ -4,8 +4,10 @@
 #include <utility>
 #include <tuple>
 #include <iterator>
+#include <cstdlib>
 using namespace std;
 
+//degree
 int n = 5;
 
 class node{
@@ -169,17 +171,22 @@ void node::borrow(node * &root)
         if(i == this) break;
         q++;
     }
-    
 
     if(q != p->a.size() && p->c[q + 1]->c.size() > n / 2 + n % 2){ //right sibling can donate
         a.push_back(p->a[q]); //down from parent
         p->a[q] = p->c[q + 1]->a[0]; //up from sibling
         p->c[q + 1]->a.erase(p->c[q + 1]->a.begin()); //cleanup
+
+        c.push_back(p->c[q + 1]->c[0]); //transfer children
+        p->c[q + 1]->c.erase(p->c[q + 1]->c.begin());
     }
     else if(q != 0 && p->c[q - 1]->c.size() > n / 2 + n % 2){ //left sibling can donate
         a.insert(a.begin(), p->a[q - 1]); //down from parent
         p->a[q] = *(p->c[q - 1]->a.end()); //up from sibling
         p->c[q - 1]->a.pop_back(); //cleanup
+
+        c.insert(c.begin(), *(p->c[q - 1]->c.end())); //transfer children
+        p->c[q - 1]->c.pop_back();
     }
     else{ //neither sibling can donate, so we pull one down from the parent and merge two
         if(q == p->a.size()){
@@ -187,7 +194,7 @@ void node::borrow(node * &root)
 
             int down = p->a[q - 1];
             //pulling down
-            p->a.erase(p->a.begin() + q - 1);
+            p->a.erase(p->a.end());
 
             //merges sib to this
             a.insert(a.begin(), down);
@@ -252,6 +259,13 @@ class Tree{
     void inorder(node * r);
 
     void remove_key(int k);
+    void start();
+
+    Tree(){
+        root = new node(); //root init
+        root->isLeaf = true; //initial condition
+        root->p = nullptr;
+    }
 };  
 
 pair<node *, int> Tree::search(const int k)
@@ -290,8 +304,10 @@ void Tree::add_key(const int k){
     current->add_key(k);
 
     //unzips btree to preserve upper bound on children
-    while(current->c.size() > n){
-
+    while(current->c.size() > n || current->a.size() >= n){
+        while(current->a.size() + 1 > current->c.size()){
+            current->c.push_back(nullptr);
+        }
         //extends tree
         current->promote();
 
@@ -378,7 +394,7 @@ void Tree::remove_key(int k)
         cout << "Not there." << endl;
         return;
     }
-    cout << q << endl;
+    // cout << q << endl;
 
     //successor
     if(!go->isLeaf) {
@@ -402,45 +418,71 @@ void Tree::remove_key(int k)
 
 }
 
-int main(){
-    Tree * t = new Tree(); //tree init
-    t->root = new node(); //root init
-    t->root->isLeaf = true; //initial condition
+void Tree::start()
+{
+    std::cout << "Following are the acceptable commands : \n\n"
+    "add <value> : adds node to tree with given value.\n"
+    "is <value> : prints 'yes' if value exists, 'no' otherwise.\n"
+    "del <value> : deletes key.\n"
+    "in : inorder traversal.\n"
+    "tree: displays structure.\n"
+    "exit : terminates program.\n\n";
 
-    for(int i = 1; i < 20; i++){
-        t->add_key(i); //add key
-        // cout << ".";
+    string cmd;
+    while(true){
+        cout << "Enter command.\n\n>>> ";
+        cin >> cmd;
+        if(cmd == "add"){
+            int val;
+            cin >> val;
+            add_key(val);
+            // cout << "Added." << std::endl << std::endl;
+        }
+        else if(cmd == "ch"){
+            int val;
+            cin >> val;
+            for(int i = 0; i < val; i++){
+                int k;
+                cin >> k;
+                add_key(k);
+            }
+        }
+        else if(cmd == "tree"){
+            print(root, 0, 0);
+            cout << endl;
+        }
+        else if(cmd == "in"){
+            std::cout << std::endl;
+            inorder(this->root);
+            std::cout << std::endl;
+        }
+        else if(cmd == "del"){
+            int val;
+            cin >> val;
+            remove_key(val);
+        }
+        else if(cmd == "is"){
+            int val;
+            cin >> val;
+            std::cout << std::endl;
+            node * is = get<0>(search(val));
+            if(is) cout << "YES";
+            else cout << "NO";
+            std::cout << std::endl;
+        }
+        else if(cmd == "exit") return;
+        else{
+            std::cout << "Invalid command." << std::endl << std::endl;
+        }
     }
 
-    // cout << "Added." << endl;
+}
 
 
-    //checks for parent pointer consistenccy
-    // for(auto i : t->root->c) {
-        // i->print();
-        // cout << (i->p == t->root) << i->isLeaf << endl;
-        // for(auto j : i->c)
-        //     cout << (j->p == i) << j->isLeaf << endl;
-            // j->print();
-    // }
+int main(){
+    Tree * t = new Tree(); //tree init
+    
+    t->start();
 
-    //prints tree horizontally
-    t->print(t->root, 0, 0);
-
-    // t->add_key(50);
-    // t->add_key(55);
-    // t->add_key(54);
-    // t->add_key(53);
-    // t->print(t->root, 0, 0);
-    // cout << "Up." << endl;
-    // t->add_key(52);
-    // t->add_key(51);
-
-    // t->print(t->root, 0, 0);
-    // t->inorder(t->root);
-    // cout << t->root->isLeaf << endl;
-
-    t->remove_key(7);
-    t->remove_key(3);
-    t->print(t->root, 0, 0);
+    return 0;
 }
